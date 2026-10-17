@@ -1,0 +1,5 @@
+**/.dart_tool
+**/build
+native/out
+native/.cache
+.git

@@ -1,0 +1,97 @@
+# Checks formatting, analysis and tests, using the released native libraries
+# through the build hook's download path (as package users get them), and
+# verifies the Docker example end to end.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dart-lang/setup-dart@v1
+      - run: dart pub get
+      - run: dart format --output=none --set-exit-if-changed lib test tool hook bin example
+      - run: dart analyze --fatal-infos
+      - name: SPDX headers
+        run: |
+          missing=$(grep -L 'SPDX-License-Identifier: GPL-3.0-or-later' $(git ls-files '*.dart' 'native/bridge/*') || true)
+          if [ -n "$missing" ]; then echo "Missing SPDX header:"; echo "$missing"; exit 1; fi
+      - name: Stockfish exit() audit
+        run: |
+          # Every remaining exit()/abort() in the engine must be an invariant
+          # violation reviewed in specs/01-architecture.md (section 5.2).
+          count=$(grep -rn --include=*.cpp --include=*.h -E '(std::)?(exit|abort)\(' native/stockfish/src \
+            | grep -v -E 'time_abort|atexit|cleanup_at_exit|universal/|fatal_error.h|stockfish_dart' | wc -l)
+          echo "exit/abort sites: $count"
+          test "$count" -eq 14
+      - name: Package size
+        run: |
+          dart pub publish --dry-run || true
+          size=$(dart pub publish --dry-run 2>&1 | grep -o 'Total compressed archive size: [0-9.]* [KM]B' || true)
+          echo "$size"
+
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, windows-2025]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dart-lang/setup-dart@v1
+      - name: Released libraries available?
+        id: manifest
+        shell: bash
+        run: |
+          if grep -q '"baseUrl": "https' native/manifest.json; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "No native release yet; skipping."; fi
+      - if: steps.manifest.outputs.ok
+        run: dart pub get
+      - if: steps.manifest.outputs.ok
+        name: Setup (downloads and verifies the library)
+        run: dart run stockfish_dart:setup
+      - if: steps.manifest.outputs.ok
+        run: dart test --reporter expanded
+      - if: steps.manifest.outputs.ok
+        name: Examples
+        shell: bash
+        run: |
+          for f in example/*.dart; do echo "== $f"; dart run "$f"; done
+      - if: steps.manifest.outputs.ok
+        name: dart build cli
+        shell: bash
+        run: |
+          dart build cli -t example/stockfish_dart_example.dart -o build/example
+          ls -R build/example/bundle
+          ./build/example/bundle/bin/stockfish_dart_example*
+
+  docker:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Released libraries available?
+        id: manifest
+        run: |
+          if grep -q '"baseUrl": "https' native/manifest.json; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "No native release yet; skipping."; fi
+      - if: steps.manifest.outputs.ok
+        name: Build image
+        run: docker build -f example/docker/Dockerfile -t stockfish-server .
+      - if: steps.manifest.outputs.ok
+        name: Run without network
+        run: |
+          out=$(docker run --rm --network none stockfish-server --once 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1')
+          echo "$out"
+          echo "$out" | grep -q '"bestMove"'

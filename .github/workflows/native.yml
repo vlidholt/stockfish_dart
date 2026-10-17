@@ -1,0 +1,156 @@
+# Builds the native Stockfish libraries for every target, tests them, and (on
+# native-v* tags) publishes them as a GitHub release with a manifest.
+name: native
+
+on:
+  push:
+    branches: [main]
+    tags: ['native-v*']
+    paths:
+      - 'native/**'
+      - 'lib/**'
+      - 'hook/**'
+      - 'test/**'
+      - 'tool/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/native.yml'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  LLVM_MINGW: '20261006'
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x64
+            runner: ubuntu-24.04
+            container: quay.io/pypa/manylinux_2_28_x86_64
+          - target: linux-arm64
+            runner: ubuntu-24.04-arm
+            container: quay.io/pypa/manylinux_2_28_aarch64
+          - target: macos-arm64
+            runner: macos-15
+          - target: macos-x64
+            runner: macos-15-intel
+          - target: windows-x64
+            runner: windows-2025
+            mingw: x86_64
+          - target: windows-arm64
+            runner: windows-11-arm
+            mingw: aarch64
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dart-lang/setup-dart@v1
+
+      - name: Install llvm-mingw
+        if: matrix.mingw
+        run: |
+          name=llvm-mingw-${LLVM_MINGW}-ucrt-${{ matrix.mingw }}
+          curl -sSfL -o "$RUNNER_TEMP/mingw.zip" \
+            "https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MINGW}/${name}.zip"
+          unzip -q "$RUNNER_TEMP/mingw.zip" -d "$RUNNER_TEMP"
+          echo "CXX=$(cygpath -m "$RUNNER_TEMP/$name/bin/clang++.exe")" >> "$GITHUB_ENV"
+
+      - name: Select compiler
+        if: '!matrix.mingw'
+        run: |
+          if [ "$RUNNER_OS" = macOS ]; then echo "CXX=clang++" >> "$GITHUB_ENV"; else echo "CXX=g++" >> "$GITHUB_ENV"; fi
+          $([ "$RUNNER_OS" = macOS ] && echo clang++ || echo g++) --version
+
+      - name: Cache NNUE network
+        uses: actions/cache@v6
+        with:
+          path: native/.cache
+          key: nnue-nn-1a298aa575a0
+
+      - run: dart pub get
+
+      - name: Build libraries
+        run: dart run tool/build_native.dart --target ${{ matrix.target }}
+
+      - name: Check exported symbols and dependencies
+        run: |
+          cd native/out/${{ matrix.target }}
+          case "$RUNNER_OS" in
+            Linux) for f in *.so; do echo "== $f"; ldd "$f" || true; done ;;
+            macOS) for f in *.dylib; do echo "== $f"; otool -L "$f"; done ;;
+            Windows) ls -la ;;
+          esac
+
+      - name: Test
+        run: dart test --reporter expanded
+
+      - name: Smoke test every supported CPU variant
+        run: dart run tool/smoke_variants.dart
+
+      - name: Upload libraries
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-${{ matrix.target }}
+          path: |
+            native/out/${{ matrix.target }}/*stockfish*
+            native/out/${{ matrix.target }}/build-info.json
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/native-v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: dart-lang/setup-dart@v1
+      - run: dart pub get
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          pattern: native-*
+
+      - name: Arrange artifacts
+        run: |
+          for d in artifacts/native-*; do mv "$d" "artifacts/${d#artifacts/native-}"; done
+          ls -R artifacts
+
+      - name: Package assets and write manifest
+        run: |
+          dart run tool/make_manifest.dart --release "$GITHUB_REF_NAME" \
+            --input artifacts --output release-assets --repo "$GITHUB_REPOSITORY"
+          git archive --format=tar.gz --prefix=stockfish_dart-native-source/ \
+            -o "release-assets/stockfish_dart-native-source-${GITHUB_REF_NAME}.tar.gz" \
+            "$GITHUB_SHA" native lib/src/native tool LICENSE
+          for t in artifacts/*; do cp "$t/build-info.json" "release-assets/$(basename "$t")-build-info.json"; done
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release-assets/* \
+            --title "Native libraries $GITHUB_REF_NAME" \
+            --notes "Stockfish 19 libraries built from $GITHUB_SHA by the native workflow. The build hook of stockfish_dart downloads and verifies these files; see native/manifest.json. Corresponding source: stockfish_dart-native-source-${GITHUB_REF_NAME}.tar.gz (GPL-3.0-or-later)."
+
+      - name: Commit manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add native/manifest.json
+          git commit -m "Update native manifest for $GITHUB_REF_NAME"
+          git push origin HEAD:main

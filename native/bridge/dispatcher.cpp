@@ -276,7 +276,24 @@ int32_t load_locked() {
     const std::string dir = own_directory();
     std::string       errors;
 
-    for (const auto& variant : supported_variants())
+    // STOCKFISH_DART_VARIANT=<name> restricts loading to one variant (for
+    // testing and diagnostics); it must still be supported by this CPU.
+    std::vector<std::string> candidates = supported_variants();
+    if (const char* forced = std::getenv("STOCKFISH_DART_VARIANT"); forced && *forced)
+    {
+        bool supported = false;
+        for (const auto& v : candidates)
+            supported = supported || v == forced;
+        if (!supported)
+        {
+            loadError = std::string("STOCKFISH_DART_VARIANT=") + forced
+                      + " is not supported by this CPU (supports: " + candidatesText + ").";
+            return SFD_ERR_LOAD;
+        }
+        candidates = {forced};
+    }
+
+    for (const auto& variant : candidates)
     {
         std::string path = dir + kSeparator + kPrefix + "stockfish_" + variant + kSuffix;
         if (!file_exists(path))

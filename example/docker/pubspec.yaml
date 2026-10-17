@@ -1,0 +1,10 @@
+name: stockfish_server
+description: Example HTTP service that answers best-move requests with Stockfish.
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  stockfish_dart:
+    path: ../..
