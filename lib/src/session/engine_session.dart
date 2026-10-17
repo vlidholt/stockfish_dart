@@ -186,8 +186,9 @@ final class EngineSession {
   /// The running search, if any.
   SearchJob? get activeSearch => _activeSearch;
 
-  bool get _isDisposed =>
-      _state == EngineState.disposing || _state == EngineState.disposed;
+  bool _disposeRequested = false;
+
+  bool get _isDisposed => _disposeRequested;
 
   void _setState(EngineState s) {
     if (_state == s) return;
@@ -222,7 +223,7 @@ final class EngineSession {
   Future<void> _handshake() async {
     await transport.start();
     _expectExit = false;
-    _optionSpecs.clear();
+    final specs = <UciOptionSpec>[];
     var name = '', author = '';
     final done = Completer<void>();
     _sink = (e) {
@@ -232,7 +233,7 @@ final class EngineSession {
         case IdEvent(key: 'author', :final value):
           author = value;
         case OptionEvent(:final spec):
-          _optionSpecs[spec.name] = spec;
+          specs.add(spec);
         case UciOkEvent():
           if (!done.isCompleted) done.complete();
         default:
@@ -254,6 +255,10 @@ final class EngineSession {
       _fail = null;
     }
     _identity = EngineIdentity(name: name, author: author);
+    // Replaced only now, so validation keeps working during a restart.
+    _optionSpecs
+      ..clear()
+      ..addAll({for (final s in specs) s.name: s});
     await exchange(const []);
   }
 
@@ -261,12 +266,15 @@ final class EngineSession {
   /// with [EngineDisposedException].
   Future<void> dispose({Duration timeout = const Duration(seconds: 5)}) async {
     if (_isDisposed) return;
+    _disposeRequested = true;
     _setState(EngineState.disposing);
-    _expectExit = true;
     _fail?.call(const EngineDisposedException());
     for (final job in _openSearches.toList()) {
       job._fail(const EngineDisposedException());
     }
+    // Let an automatic restart finish first; it checks _disposeRequested.
+    if (_restarting case final restarting?) await restarting;
+    _expectExit = true;
     try {
       await transport.stop(timeout: timeout);
     } finally {
@@ -357,15 +365,18 @@ final class EngineSession {
       } catch (_) {
         // The engine is being replaced anyway.
       }
+      if (_isDisposed) return;
       await _handshake();
       for (final MapEntry(:key, :value) in _appliedOptions.entries) {
+        if (_isDisposed) return;
         await exchange([SetOptionCommand(key, value).toUci()]);
       }
       if (_position case final p?) {
         await exchange([PositionCommand(p).toUci()]);
       }
-      _setState(EngineState.idle);
+      if (!_isDisposed) _setState(EngineState.idle);
     } catch (e) {
+      if (_isDisposed) return;
       _setState(EngineState.failed);
       if (!_failures.isClosed) {
         _failures.add(EngineFatalException('Restarting the engine failed: $e'));
@@ -539,7 +550,6 @@ final class EngineSession {
     bool interrupt = false,
   }) {
     final job = SearchJob._(this, limits: limits, ponder: ponder);
-    _openSearches.add(job);
     final run = enqueue(() async {
       if (position != null) await applyPosition(position);
       await _runSearch(
@@ -547,6 +557,8 @@ final class EngineSession {
         GoCommand(limits: limits, searchMoves: searchMoves, ponder: ponder),
       );
     }, interrupt: interrupt);
+    // Registered after enqueue() so its busy check doesn't see this job.
+    _openSearches.add(job);
     run
         .then((_) {}, onError: (Object e, StackTrace s) => job._fail(e, s))
         .whenComplete(() => _openSearches.remove(job));

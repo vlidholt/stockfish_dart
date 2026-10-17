@@ -159,11 +159,15 @@ final class Stockfish {
   /// because Stockfish silently ignores invalid values. Throws
   /// [InvalidOptionException].
   Future<void> setOptions(StockfishOptions options) {
-    final wanted = options.toUciMap();
-    final validated = <String, String>{
-      for (final MapEntry(:key, :value) in wanted.entries)
-        key: _validate(key, value),
-    };
+    final Map<String, String> validated;
+    try {
+      validated = {
+        for (final MapEntry(:key, :value) in options.toUciMap().entries)
+          key: _validate(key, value),
+      };
+    } on StockfishException catch (e) {
+      return Future.error(e);
+    }
     return _session.enqueue(() async {
       for (final MapEntry(:key, :value) in validated.entries) {
         if (_session.appliedOptions[key] == value) continue;

@@ -281,6 +281,7 @@ class TBFile: public std::ifstream {
         if (statbuf.st_size % 64 != 16)
         {
             std::cerr << "Corrupt tablebase file " << fname.string() << std::endl;
+            ::close(fd);  // stockfish_dart: don't leak the descriptor when throwing
             fatal_error("Corrupt tablebase file " + fname.string());  // stockfish_dart
         }
 
@@ -312,6 +313,7 @@ class TBFile: public std::ifstream {
         if (size_low % 64 != 16)
         {
             std::cerr << "Corrupt tablebase file " << fname.string() << std::endl;
+            CloseHandle(fd);  // stockfish_dart: don't leak the handle when throwing
             fatal_error("Corrupt tablebase file " + fname.string());  // stockfish_dart
         }
 
@@ -332,6 +334,7 @@ class TBFile: public std::ifstream {
         {
             std::cerr << "MapViewOfFile() failed, name = " << fname.string()
                       << ", error = " << GetLastError() << std::endl;
+            CloseHandle(mmap);  // stockfish_dart
             fatal_error("MapViewOfFile() failed for " + fname.string());  // stockfish_dart
         }
     #endif
@@ -342,6 +345,8 @@ class TBFile: public std::ifstream {
         if (memcmp(data, Magics[type == WDL], 4))
         {
             std::cerr << "Corrupted table in file " << fname.string() << std::endl;
+            unmap(*baseAddress, *mapping);  // stockfish_dart: release the mapping when throwing
+            *baseAddress = nullptr;
             fatal_error("Corrupted table in file " + fname.string());  // stockfish_dart
         }
 
