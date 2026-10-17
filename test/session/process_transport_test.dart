@@ -10,7 +10,8 @@ import 'package:test/test.dart';
 /// Runs test/support/fake_uci_engine.dart in a child Dart process.
 ProcessTransport fakeProcess() => ProcessTransport(
   Platform.resolvedExecutable,
-  arguments: ['run', 'test/support/fake_uci_engine.dart'],
+  // Runs on the VM directly: no dartdev, so no build hooks are involved.
+  arguments: ['--disable-dart-dev', 'test/support/fake_uci_engine.dart'],
 );
 
 void main() {
@@ -42,7 +43,7 @@ void main() {
 
     await expectLater(
       engine.setPosition(Position.startpos(moves: [UciMove('e2e5')])),
-      throwsA(isA<StockfishException>()),
+      throwsA(isA<EngineCommandException>()),
     );
     expect(engine.position, Position.startpos(moves: [UciMove('d2d4')]));
     // The process died; the next call waits for the restart and works.

@@ -474,7 +474,15 @@ final class EngineSession {
       onStderr?.call(line);
     };
     _fail = (error) {
-      if (!done.isCompleted) done.completeError(error);
+      if (done.isCompleted) return;
+      // An external engine exits right after a CRITICAL ERROR; report the
+      // rejected command rather than the exit.
+      final critical = events.whereType<CriticalErrorEvent>().firstOrNull;
+      done.completeError(
+        critical == null
+            ? error
+            : EngineCommandException(critical.command, critical.reason),
+      );
     };
     try {
       for (final c in commands) {
