@@ -1,0 +1,2 @@
+info string CRITICAL ERROR: Command `position fen invalid fen string` failed. Reason: Invalid FEN. Invalid piece: i
+# exception: EngineCommandException: Command `position fen invalid fen string` failed: Invalid FEN. Invalid piece: i

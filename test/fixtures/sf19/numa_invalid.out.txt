@@ -1,0 +1,1 @@
+info string NumaPolicy: invalid value 'garbage', keeping previous config.

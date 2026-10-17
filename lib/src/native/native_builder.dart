@@ -207,9 +207,7 @@ final class NativeBuilder {
   /// Builds everything and returns the produced files.
   Future<List<File>> build() async {
     await outputDirectory.create(recursive: true);
-    final objRoot = Directory.fromUri(
-      outputDirectory.uri.resolve('obj/'),
-    );
+    final objRoot = Directory.fromUri(outputDirectory.uri.resolve('obj/'));
     final produced = <File>[];
     final flags = variantFlags();
 
@@ -224,22 +222,24 @@ final class NativeBuilder {
         File('${_bridge.path}engine_bridge.cpp'),
       ];
       final objects = <String>[];
-      await _parallel(sources.map((source) {
-        final name = source.uri.pathSegments.last.replaceAll('.cpp', '.o');
-        final obj = '${objDir.path}$name';
-        objects.add(obj);
-        return () => _run(compiler, [
-          ..._commonFlags,
-          '-O3',
-          '-funroll-loops',
-          '-DARCH=${upstreamArchName(variant)}',
-          ...extra,
-          '-c',
-          source.path,
-          '-o',
-          obj,
-        ]);
-      }));
+      await _parallel(
+        sources.map((source) {
+          final name = source.uri.pathSegments.last.replaceAll('.cpp', '.o');
+          final obj = '${objDir.path}$name';
+          objects.add(obj);
+          return () => _run(compiler, [
+            ..._commonFlags,
+            '-O3',
+            '-funroll-loops',
+            '-DARCH=${upstreamArchName(variant)}',
+            ...extra,
+            '-c',
+            source.path,
+            '-o',
+            obj,
+          ]);
+        }),
+      );
       final fileName = target.variantFileName(variant);
       final out = File('${outputDirectory.path}$fileName');
       await _run(compiler, [
@@ -263,7 +263,9 @@ final class NativeBuilder {
       '-o',
       dispatcherObj,
     ]);
-    final dispatcher = File('${outputDirectory.path}${target.dispatcherFileName}');
+    final dispatcher = File(
+      '${outputDirectory.path}${target.dispatcherFileName}',
+    );
     await _run(compiler, [
       dispatcherObj,
       '-o',
@@ -317,7 +319,10 @@ Future<File> ensureNet(File file, {void Function(String)? log}) async {
     final request = await client.getUrl(Uri.parse(defaultNetUrl));
     final response = await request.close();
     if (response.statusCode != 200) {
-      throw HttpException('HTTP ${response.statusCode}', uri: Uri.parse(defaultNetUrl));
+      throw HttpException(
+        'HTTP ${response.statusCode}',
+        uri: Uri.parse(defaultNetUrl),
+      );
     }
     final part = File('${file.path}.part');
     await response.pipe(part.openWrite());
@@ -357,7 +362,7 @@ Future<void> writeBuildInfo(
         },
     },
   };
-  await File('${outputDirectory.path}build-info.json').writeAsString(
-    const JsonEncoder.withIndent('  ').convert(info),
-  );
+  await File(
+    '${outputDirectory.path}build-info.json',
+  ).writeAsString(const JsonEncoder.withIndent('  ').convert(info));
 }

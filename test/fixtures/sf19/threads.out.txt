@@ -1,0 +1,2 @@
+info string Using 2 threads with NUMA node thread binding: 2/12
+info string Using 1 thread with NUMA node thread binding: 1/12

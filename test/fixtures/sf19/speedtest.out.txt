@@ -1,0 +1,1 @@
+info string Using 1 thread

@@ -32,9 +32,11 @@ Future<void> main(List<String> args) async {
   final out = Directory(
     options['out'] ?? '${root.path}native/out/${target.name}/',
   );
-  final outDir = Directory(out.path.endsWith(Platform.pathSeparator) || out.path.endsWith('/')
-      ? out.path
-      : '${out.path}${Platform.pathSeparator}');
+  final outDir = Directory(
+    out.path.endsWith(Platform.pathSeparator) || out.path.endsWith('/')
+        ? out.path
+        : '${out.path}${Platform.pathSeparator}',
+  );
 
   final net = await ensureNet(
     File('${root.path}native/.cache/$defaultNetName'),

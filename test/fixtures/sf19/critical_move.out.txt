@@ -1,0 +1,2 @@
+info string CRITICAL ERROR: Command `position startpos moves e2e5` failed. Reason: Illegal move: e2e5
+# exception: EngineCommandException: Command `position startpos moves e2e5` failed: Illegal move: e2e5
