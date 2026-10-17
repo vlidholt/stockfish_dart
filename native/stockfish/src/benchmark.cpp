@@ -420,7 +420,7 @@ std::vector<std::string> setup_bench(const std::string& currentFen, std::istream
         if (!file.is_open())
         {
             std::cerr << "Unable to open file " << fenFile << std::endl;
-            exit(EXIT_FAILURE);
+            command_error("Unable to open file " + fenFile);  // stockfish_dart
         }
 
         while (getline(file, fen))

@@ -115,7 +115,7 @@ class Logger {
             if (!l.file.is_open())
             {
                 std::cerr << "Unable to open debug log file " << fname << std::endl;
-                exit(EXIT_FAILURE);
+                command_error("Unable to open debug log file " + fname.string());  // stockfish_dart
             }
 
             std::cin.rdbuf(&l.in);
@@ -170,6 +170,11 @@ std::string engine_version_info() {
         ss << "nogit";
 #endif
     }
+
+#ifdef STOCKFISH_DART_BRIDGE
+    // stockfish_dart: notice that this is a modified version (GPL-3, section 5a).
+    ss << " (modified by stockfish_dart)";
+#endif
 
     return ss.str();
 }
@@ -545,7 +550,9 @@ fs::path path_from_utf8(const std::string& path) {
 CommandLine::CommandLine(int _argc, char** _argv) :
     argc(_argc),
     argv(_argv) {
-#ifdef _WIN32
+// stockfish_dart: when embedded, the process command line belongs to the host
+// application and must not be interpreted as UCI commands.
+#if defined(_WIN32) && !defined(STOCKFISH_DART_BRIDGE)
     // Convert any non-ANSI characters passed on the command line to UTF-8
     int wargc = 0;
     if (LPWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &wargc))

@@ -25,6 +25,7 @@
 #include <cstdlib>
 #include <functional>
 #include <iostream>
+#include <iterator>  // stockfish_dart: std::inserter (not included transitively by newer libc++)
 #include <limits>
 #include <map>
 #include <memory>

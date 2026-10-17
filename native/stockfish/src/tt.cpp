@@ -193,7 +193,8 @@ void TranspositionTable::resize(usize mbSize, ThreadPool& threads) {
     if (!table)
     {
         std::cerr << "Failed to allocate " << mbSize << "MB for transposition table." << std::endl;
-        exit(EXIT_FAILURE);
+        // stockfish_dart
+        fatal_error("Failed to allocate " + std::to_string(mbSize) + "MB for transposition table.");
     }
 
     clear(threads);

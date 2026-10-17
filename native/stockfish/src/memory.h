@@ -74,7 +74,7 @@ constexpr usize HugePageSize = usize(1) << 30;
 
 [[noreturn]] inline void report_failed_allocation(usize bytes) {
     std::cerr << "Failed to allocate " << bytes << " bytes." << std::endl;
-    std::exit(EXIT_FAILURE);
+    fatal_error("Failed to allocate " + std::to_string(bytes) + " bytes.");  // stockfish_dart
 }
 
 void* std_aligned_alloc(usize alignment, usize size);

@@ -281,7 +281,7 @@ class TBFile: public std::ifstream {
         if (statbuf.st_size % 64 != 16)
         {
             std::cerr << "Corrupt tablebase file " << fname.string() << std::endl;
-            exit(EXIT_FAILURE);
+            fatal_error("Corrupt tablebase file " + fname.string());  // stockfish_dart
         }
 
         *mapping     = statbuf.st_size;
@@ -292,7 +292,7 @@ class TBFile: public std::ifstream {
         if (*baseAddress == MAP_FAILED)
         {
             std::cerr << "Could not mmap() " << fname.string() << std::endl;
-            exit(EXIT_FAILURE);
+            fatal_error("Could not mmap() " + fname.string());  // stockfish_dart
         }
 
         #if defined(MADV_RANDOM)
@@ -312,7 +312,7 @@ class TBFile: public std::ifstream {
         if (size_low % 64 != 16)
         {
             std::cerr << "Corrupt tablebase file " << fname.string() << std::endl;
-            exit(EXIT_FAILURE);
+            fatal_error("Corrupt tablebase file " + fname.string());  // stockfish_dart
         }
 
         HANDLE mmap = CreateFileMapping(fd, nullptr, PAGE_READONLY, size_high, size_low, nullptr);
@@ -321,7 +321,7 @@ class TBFile: public std::ifstream {
         if (!mmap)
         {
             std::cerr << "CreateFileMapping() failed" << std::endl;
-            exit(EXIT_FAILURE);
+            fatal_error("CreateFileMapping() failed for " + fname.string());  // stockfish_dart
         }
 
         *mapping     = u64(mmap);
@@ -332,7 +332,7 @@ class TBFile: public std::ifstream {
         {
             std::cerr << "MapViewOfFile() failed, name = " << fname.string()
                       << ", error = " << GetLastError() << std::endl;
-            exit(EXIT_FAILURE);
+            fatal_error("MapViewOfFile() failed for " + fname.string());  // stockfish_dart
         }
     #endif
         u8* data = (u8*) *baseAddress;
@@ -342,7 +342,7 @@ class TBFile: public std::ifstream {
         if (memcmp(data, Magics[type == WDL], 4))
         {
             std::cerr << "Corrupted table in file " << fname.string() << std::endl;
-            exit(EXIT_FAILURE);
+            fatal_error("Corrupted table in file " + fname.string());  // stockfish_dart
         }
 
         return data + 4;  // Skip Magics's header
@@ -536,7 +536,7 @@ class TBTables {
             }
         }
         std::cerr << "TB hash table size too low!" << std::endl;
-        exit(EXIT_FAILURE);
+        fatal_error("TB hash table size too low");  // stockfish_dart
     }
 
    public:
@@ -1418,7 +1418,7 @@ void* mapped(TBTable<Type>& e, const Position& pos) {
     if (data && !set(e, data, (const u8*) e.baseAddress + size))
     {
         std::cerr << "Corrupted table in file " << fname << std::endl;
-        exit(EXIT_FAILURE);
+        fatal_error("Corrupted table in file " + std::string(fname));  // stockfish_dart
     }
 
     e.ready.store(true, std::memory_order_release);

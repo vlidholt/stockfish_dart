@@ -34,6 +34,7 @@
 
 #include "benchmark.h"
 #include "engine.h"
+#include "fatal_error.h"
 #include "memory.h"
 #include "movegen.h"
 #include "position.h"
@@ -110,6 +111,11 @@ void UCIEngine::loop() {
         token.clear();  // Avoid a stale if getline() returns nothing or a blank line
         is >> token;
 
+        // stockfish_dart: a failing command is reported and the loop keeps
+        // running, instead of terminating the (host) process.
+        try
+        {
+
         if (token == "quit" || token == "stop")
             engine.stop();
 
@@ -184,6 +190,15 @@ void UCIEngine::loop() {
         else if (!token.empty() && token[0] != '#')
             sync_cout << "Unknown command: '" << cmd << "'. Type help for more information."
                       << sync_endl;
+
+        } catch (const CommandError& e)
+        {
+            sync_cout << "info string CRITICAL ERROR: Command `" << currentCmd
+                      << "` failed. Reason: " << e.what() << sync_endl;
+
+            // The failed command may have left a half-applied position behind.
+            engine.set_position(StartFEN, {});
+        }
 
     } while (token != "quit" && cli.argc <= 1);  // The command-line arguments are one-shot
 }
@@ -694,11 +709,8 @@ void UCIEngine::on_bestmove(std::string_view bestmove, std::string_view ponder) 
     std::cout << sync_endl;
 }
 
-void UCIEngine::terminate_on_critical_error(const std::string& message) {
-    sync_cout << "info string CRITICAL ERROR: Command `" << currentCmd
-              << "` failed. Reason: " << message << '\n'
-              << sync_endl;
-    std::exit(1);
-}
+// stockfish_dart: throws instead of calling std::exit(1); the UCI loop
+// reports the error in the same format and keeps running.
+void UCIEngine::terminate_on_critical_error(const std::string& message) { command_error(message); }
 
 }  // namespace Stockfish

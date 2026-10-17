@@ -46,7 +46,12 @@
 //     const unsigned char *const gEmbeddedNNUEEnd;     // a marker to the end
 //     const unsigned int         gEmbeddedNNUESize;    // the size of the embedded file
 // Note that this does not work in Microsoft Visual Studio.
-#if !defined(UNIVERSAL_BINARY) && !defined(_MSC_VER) && !defined(NNUE_EMBEDDING_OFF)
+#if defined(STOCKFISH_DART_BRIDGE)
+// stockfish_dart: the default network is embedded once in the dispatcher
+// library and handed to this engine library at startup (native/bridge/).
+extern const unsigned char* gEmbeddedNNUEData;
+extern unsigned int         gEmbeddedNNUESize;
+#elif !defined(UNIVERSAL_BINARY) && !defined(_MSC_VER) && !defined(NNUE_EMBEDDING_OFF)
 INCBIN(EmbeddedNNUE, EvalFileDefaultName);
 #elif defined(UNIVERSAL_BINARY_MACOS_X86_SLICE)
 // Determined at runtime, see universal/nnue_embed.cpp
@@ -185,7 +190,9 @@ void Network::verify(const std::function<void(std::string_view)>& f,
             f(msg);
         }
 
-        exit(EXIT_FAILURE);
+        // stockfish_dart: the engine keeps running; every search fails the
+        // same way until EvalFile points to a valid network again.
+        command_error("The network file " + evalfilePath.string() + " was not loaded successfully.");
     }
 
     if (f)
@@ -250,7 +257,7 @@ void Network::load_internal(EvalFile& evalFile) {
         }
     };
 
-#ifdef UNIVERSAL_BINARY_MACOS_X86_SLICE
+#if defined(UNIVERSAL_BINARY_MACOS_X86_SLICE) || defined(STOCKFISH_DART_BRIDGE)
     if (gEmbeddedNNUEData == nullptr)  // failed embedded load
         return;
 #endif

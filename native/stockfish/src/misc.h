@@ -37,6 +37,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "fatal_error.h"  // stockfish_dart: exceptions replacing std::exit()
+
 #if !defined(NO_PREFETCH) && (defined(_MSC_VER) || defined(__INTEL_COMPILER))
     #include <immintrin.h>
 #endif

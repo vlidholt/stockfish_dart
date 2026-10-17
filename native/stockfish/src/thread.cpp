@@ -62,7 +62,7 @@ Thread::Thread(Search::SharedState&                    sharedState,
     if (!stdThread.joinable())
     {
         std::cerr << "Failed to create search thread\n";
-        std::exit(EXIT_FAILURE);
+        fatal_error("Failed to create search thread");  // stockfish_dart
     }
 
     wait_for_search_finished();
@@ -142,8 +142,21 @@ void Thread::idle_loop() {
 
         lk.unlock();
 
+        // stockfish_dart: errors on search threads can't reach the UCI thread,
+        // so they are handed to the embedding bridge, which resets the engine.
         if (job)
-            job();
+        {
+            try
+            {
+                job();
+            } catch (const std::exception& e)
+            {
+                if (asyncFatalHandler)
+                    asyncFatalHandler(e.what());
+                else
+                    std::abort();
+            }
+        }
     }
 }
 
