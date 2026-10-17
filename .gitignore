@@ -1,0 +1,18 @@
+# Dart
+.dart_tool/
+pubspec.lock
+build/
+coverage/
+doc/api/
+
+# Native build outputs and caches
+native/out/
+native/.cache/
+*.o
+*.obj
+*.nnue
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
