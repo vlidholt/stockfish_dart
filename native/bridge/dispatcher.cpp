@@ -122,7 +122,10 @@ std::vector<std::string> supported_variants() {
     #endif
     if (dotprod)
         v.push_back("armv8_dotprod");
+    #if !defined(__APPLE__)
+    // Only the dot product variant is built for macOS (every Apple CPU has it).
     v.push_back("armv8");
+    #endif
 #else
     #error "Unsupported CPU architecture"
 #endif
