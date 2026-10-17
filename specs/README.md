@@ -8,6 +8,32 @@ through FFI. It runs on macOS, Windows and Linux.
 > Nothing in `lib/` has been written yet. Target engine: **Stockfish 19**
 > (tag `sf_19`, released 2026-09-05).
 
+## As built (2026-10-17)
+
+The implementation follows this plan with these deliberate deviations:
+
+- **No universal binary.** Stockfish's universal build relies on executable-only
+  tricks (LTO assembly rewriting, init-section renaming). Instead each target
+  ships a **dispatcher** library (CPU detection, the 98 MB network, C API)
+  plus one small **engine library per instruction set** (8 for x86-64, 2 for
+  arm64), all bundled as code assets. The dispatcher loads the best variant
+  from its own directory. See `doc/architecture.md`.
+- **The network is 98.5 MB**, not 78.9 MB (an earlier size probe was wrong).
+- **Toolchains:** manylinux_2_28 containers (GCC) for Linux, llvm-mingw for
+  Windows x64/arm64, Apple clang for macOS (separate x64 and arm64 libraries,
+  chosen by the build hook rather than fat binaries).
+- **Two more Stockfish patches** were needed, both found by tests: option
+  insertion order is now per `OptionsMap` (a re-created engine printed no
+  options), and tablebase file handles are released before throwing. The
+  Windows command-line handling and a missing `<iterator>` include are also
+  patched. See `native/patches/README.md`.
+- **The build hook only warns** when a package version has no prebuilt
+  libraries for a target (instead of failing), so tools and fake-engine
+  tests still build.
+- **`ProcessTransport` shipped in 1.0** (Q8).
+- **Guides** are condensed into the files listed in the README's
+  Documentation section.
+
 ## Documents
 
 | # | File | Contents |

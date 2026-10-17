@@ -114,6 +114,9 @@ Future<List<File>> _resolveFiles(
   final localOut = Directory.fromUri(
     input.packageRoot.resolve('native/out/${target.name}/'),
   );
+  // Always a dependency, so creating or deleting a local build re-runs the
+  // hook instead of reusing a cached result.
+  output.dependencies.add(localOut.uri);
   final localFiles = _filesIn(localOut, target);
   if (localFiles.isNotEmpty) {
     log('using local build in ${localOut.path}');
