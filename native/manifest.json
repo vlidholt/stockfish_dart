@@ -1,5 +1,205 @@
 {
-  "release": null,
-  "baseUrl": null,
-  "targets": {}
+  "release": "native-v0.1.0",
+  "baseUrl": "https://github.com/vlidholt/stockfish_dart/releases/download/native-v0.1.0/",
+  "targets": {
+    "linux-x64": {
+      "files": {
+        "libstockfish.so": {
+          "asset": "linux-x64-libstockfish.so.gz",
+          "sha256": "b74ae802130f78d373420a5f38d30a9d6dba31e0a5168a828fa0acd9324f1876",
+          "size": 99659560
+        },
+        "libstockfish_x86_64.so": {
+          "asset": "linux-x64-libstockfish_x86_64.so.gz",
+          "sha256": "17d2df662186f1ea37934709713aabc42c48023ee5ba13c05ef63e69519f2a0f",
+          "size": 2282512
+        },
+        "libstockfish_x86_64_sse41_popcnt.so": {
+          "asset": "linux-x64-libstockfish_x86_64_sse41_popcnt.so.gz",
+          "sha256": "639cc5581d5599c40cd51ecf40d63c971a9b31ac71e79d5c4e770a5ac53a2ba3",
+          "size": 2282472
+        },
+        "libstockfish_x86_64_avx2.so": {
+          "asset": "linux-x64-libstockfish_x86_64_avx2.so.gz",
+          "sha256": "ca45b4462ad6e7dea12cb97e006771c9b56e0788c464c37858bd0144521c03a1",
+          "size": 2302952
+        },
+        "libstockfish_x86_64_bmi2.so": {
+          "asset": "linux-x64-libstockfish_x86_64_bmi2.so.gz",
+          "sha256": "52344fa0b32634de1dc3673e3ac839f300778d5c5112f276bcffd71be0c5ad8d",
+          "size": 2302952
+        },
+        "libstockfish_x86_64_avxvnni.so": {
+          "asset": "linux-x64-libstockfish_x86_64_avxvnni.so.gz",
+          "sha256": "9979b9d6d31f66c47113b242825b3a78c007756cb5eb7cb6c8766002b92e6cc0",
+          "size": 2302952
+        },
+        "libstockfish_x86_64_avx512.so": {
+          "asset": "linux-x64-libstockfish_x86_64_avx512.so.gz",
+          "sha256": "0d66cf921ddcef6d1960c63b24bf3c5bb956f42cd423b88b2fdc96412b78a320",
+          "size": 2319336
+        },
+        "libstockfish_x86_64_vnni512.so": {
+          "asset": "linux-x64-libstockfish_x86_64_vnni512.so.gz",
+          "sha256": "21bab745cb137fa2ed667733ef053bbd1fc9e42ea18bee035b09a97c1e4d2642",
+          "size": 2315240
+        },
+        "libstockfish_x86_64_avx512icl.so": {
+          "asset": "linux-x64-libstockfish_x86_64_avx512icl.so.gz",
+          "sha256": "603fb31f258f8abfa9e86a4cc5a8dbf93b1a65c43b78f0bbe1b468f9d219480f",
+          "size": 2307048
+        }
+      }
+    },
+    "linux-arm64": {
+      "files": {
+        "libstockfish.so": {
+          "asset": "linux-arm64-libstockfish.so.gz",
+          "sha256": "7d3f7f4fd58762a8e7066279aabee2e328ccec57ce9284eb88aee7e2e54c2d62",
+          "size": 99749968
+        },
+        "libstockfish_armv8.so": {
+          "asset": "linux-arm64-libstockfish_armv8.so.gz",
+          "sha256": "a0e816f54911df5f88f3cd105edef6df72556c3ec7c2022528f4cce222528dcc",
+          "size": 2168176
+        },
+        "libstockfish_armv8_dotprod.so": {
+          "asset": "linux-arm64-libstockfish_armv8_dotprod.so.gz",
+          "sha256": "c8ac764b971388304d52f56fc10076fbc48303c3e0e70708bd1f01415f5e5c57",
+          "size": 2233672
+        }
+      }
+    },
+    "macos-x64": {
+      "files": {
+        "libstockfish.dylib": {
+          "asset": "macos-x64-libstockfish.dylib.gz",
+          "sha256": "fc00ea146b42ede9db4127c0d5640f809928c66d827f5580510fa73fe5e07290",
+          "size": 98548320
+        },
+        "libstockfish_x86_64.dylib": {
+          "asset": "macos-x64-libstockfish_x86_64.dylib.gz",
+          "sha256": "9b816799a5b854c320fcfc0c280f0d50eaf4a026f27554b4155934b78e1039f7",
+          "size": 861056
+        },
+        "libstockfish_x86_64_sse41_popcnt.dylib": {
+          "asset": "macos-x64-libstockfish_x86_64_sse41_popcnt.dylib.gz",
+          "sha256": "81d81a73e0aa31087711b5b7baa200fa0d44ca9e19a9773f9026164862529376",
+          "size": 861184
+        },
+        "libstockfish_x86_64_avx2.dylib": {
+          "asset": "macos-x64-libstockfish_x86_64_avx2.dylib.gz",
+          "sha256": "fa4c03d76a36d4c5fc55e92d6aa826cfbf4991db0fd5d58e7cd70d19270f8517",
+          "size": 868840
+        },
+        "libstockfish_x86_64_bmi2.dylib": {
+          "asset": "macos-x64-libstockfish_x86_64_bmi2.dylib.gz",
+          "sha256": "67085ee574990415205aa600d1e0bdd451d9e1c405259fa62f0457211c1c137a",
+          "size": 868840
+        },
+        "libstockfish_x86_64_avxvnni.dylib": {
+          "asset": "macos-x64-libstockfish_x86_64_avxvnni.dylib.gz",
+          "sha256": "9f7dada4d3a6688a9657e9e071db11a0e6e5c1d8f13f0d67df88fcab9990f8f6",
+          "size": 868840
+        },
+        "libstockfish_x86_64_avx512.dylib": {
+          "asset": "macos-x64-libstockfish_x86_64_avx512.dylib.gz",
+          "sha256": "6f7b6bad362546deadc5da59799d574d944d10365cd52481f1b761b9bed2e800",
+          "size": 878040
+        },
+        "libstockfish_x86_64_vnni512.dylib": {
+          "asset": "macos-x64-libstockfish_x86_64_vnni512.dylib.gz",
+          "sha256": "55d970456ebba262fdd037a4ac53644793032cb676acf31cd4c7b963901a978a",
+          "size": 878040
+        },
+        "libstockfish_x86_64_avx512icl.dylib": {
+          "asset": "macos-x64-libstockfish_x86_64_avx512icl.dylib.gz",
+          "sha256": "be4bcca172af84777b77d97515f155c53261e24f2b506208bb5e4569540c8ef0",
+          "size": 881904
+        }
+      }
+    },
+    "macos-arm64": {
+      "files": {
+        "libstockfish.dylib": {
+          "asset": "macos-arm64-libstockfish.dylib.gz",
+          "sha256": "a3e2334d15f8c994230ff7d55d7d535c7309aa685b444aaa00db3ab44a4567f8",
+          "size": 99325168
+        },
+        "libstockfish_armv8_dotprod.dylib": {
+          "asset": "macos-arm64-libstockfish_armv8_dotprod.dylib.gz",
+          "sha256": "d91f63b0cee610290f69211d8fa00f8cfffaf3655fd98d6a4c1a379fab0e1c22",
+          "size": 834736
+        }
+      }
+    },
+    "windows-x64": {
+      "files": {
+        "stockfish.dll": {
+          "asset": "windows-x64-stockfish.dll.gz",
+          "sha256": "298d912ba70cbbe4244a50f64088d483b9a6d68c9cbd1c988d710e07bb319e09",
+          "size": 98873344
+        },
+        "stockfish_x86_64.dll": {
+          "asset": "windows-x64-stockfish_x86_64.dll.gz",
+          "sha256": "87809b6becba95fd15107c5f0cc29a09eca7647f8afa191454413b0e8b06be8d",
+          "size": 1562624
+        },
+        "stockfish_x86_64_sse41_popcnt.dll": {
+          "asset": "windows-x64-stockfish_x86_64_sse41_popcnt.dll.gz",
+          "sha256": "29e77a8b80e3fa258b0dc7427bb264cad5275ee26b0fddbc23cb9c370319dece",
+          "size": 1562624
+        },
+        "stockfish_x86_64_avx2.dll": {
+          "asset": "windows-x64-stockfish_x86_64_avx2.dll.gz",
+          "sha256": "0196dd306bb5f6700885fd484e07225d7f3c5eb927bfb2253d72ddb02a56b820",
+          "size": 1577472
+        },
+        "stockfish_x86_64_bmi2.dll": {
+          "asset": "windows-x64-stockfish_x86_64_bmi2.dll.gz",
+          "sha256": "457d648ae69e4ed8ccd07305d2ca8b7e809923b6e8ef7782f2d390b232695c09",
+          "size": 1577472
+        },
+        "stockfish_x86_64_avxvnni.dll": {
+          "asset": "windows-x64-stockfish_x86_64_avxvnni.dll.gz",
+          "sha256": "229314aacf4c7d0c0bd2df37371b4eea994f49ae3ef5ab603ff699662c3fb91e",
+          "size": 1578496
+        },
+        "stockfish_x86_64_avx512.dll": {
+          "asset": "windows-x64-stockfish_x86_64_avx512.dll.gz",
+          "sha256": "7742fbe7275303ba9567fd48785c24e9723b31bbfff99b7b341d6a1f6f82b7d6",
+          "size": 1583104
+        },
+        "stockfish_x86_64_vnni512.dll": {
+          "asset": "windows-x64-stockfish_x86_64_vnni512.dll.gz",
+          "sha256": "b6708c13ca2da4a1b22cd1588a4117a3ffa225eb559967fa6a8b7b5aaf6fb044",
+          "size": 1583104
+        },
+        "stockfish_x86_64_avx512icl.dll": {
+          "asset": "windows-x64-stockfish_x86_64_avx512icl.dll.gz",
+          "sha256": "a906fae3d1db530f335327f8e9f3ee0c34fd5dd740b8c2790b08b8f5f0a3f7e3",
+          "size": 1587200
+        }
+      }
+    },
+    "windows-arm64": {
+      "files": {
+        "stockfish.dll": {
+          "asset": "windows-arm64-stockfish.dll.gz",
+          "sha256": "29b2aa6bd72cda09cfbc34ff8195224fdac7748b2d0cfca5c5190a93f70fb8ee",
+          "size": 98824704
+        },
+        "stockfish_armv8.dll": {
+          "asset": "windows-arm64-stockfish_armv8.dll.gz",
+          "sha256": "0bb5daa0c70c08d226daff9703be50081e7bbd6b148e8d4f82dea8daa23f90b9",
+          "size": 1422336
+        },
+        "stockfish_armv8_dotprod.dll": {
+          "asset": "windows-arm64-stockfish_armv8_dotprod.dll.gz",
+          "sha256": "2cd4e8b9f9c0f7523addbffd90d96f83e88af83533938ba3619714b55dd3cdc3",
+          "size": 1423360
+        }
+      }
+    }
+  }
 }
