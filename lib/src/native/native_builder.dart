@@ -197,6 +197,8 @@ final class NativeBuilder {
     ],
     NativeOS.macos => [
       '-dynamiclib',
+      // Dart rewrites install names when bundling; leave room for them.
+      '-Wl,-headerpad_max_install_names',
       '-install_name',
       '@rpath/$fileName',
       ..._targetFlags,
