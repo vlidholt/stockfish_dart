@@ -1,0 +1,394 @@
+diff --git a/native/stockfish/src/benchmark.cpp b/native/stockfish/src/benchmark.cpp
+index a21ba07..6150dd6 100644
+--- a/native/stockfish/src/benchmark.cpp
++++ b/native/stockfish/src/benchmark.cpp
+@@ -420,7 +420,7 @@ std::vector<std::string> setup_bench(const std::string& currentFen, std::istream
+         if (!file.is_open())
+         {
+             std::cerr << "Unable to open file " << fenFile << std::endl;
+-            exit(EXIT_FAILURE);
++            command_error("Unable to open file " + fenFile);  // stockfish_dart
+         }
+ 
+         while (getline(file, fen))
+diff --git a/native/stockfish/src/fatal_error.h b/native/stockfish/src/fatal_error.h
+new file mode 100644
+index 0000000..fc99051
+--- /dev/null
++++ b/native/stockfish/src/fatal_error.h
+@@ -0,0 +1,56 @@
++/*
++  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
++  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
++
++  Stockfish is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 3 of the License, or
++  (at your option) any later version.
++
++  Stockfish is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++// stockfish_dart modification (2026-10-17): upstream Stockfish terminates the
++// process with std::exit() on bad input and on resource failures. When the
++// engine is embedded as a library inside a host process that is not
++// acceptable, so those call sites throw one of the exceptions below instead.
++
++#ifndef FATAL_ERROR_H_INCLUDED
++#define FATAL_ERROR_H_INCLUDED
++
++#include <stdexcept>
++#include <string>
++
++namespace Stockfish {
++
++// A command could not be executed (invalid FEN, illegal move, bad argument,
++// unreadable file, ...). The UCI loop reports it and keeps running.
++class CommandError: public std::runtime_error {
++   public:
++    using std::runtime_error::runtime_error;
++};
++
++// The engine is in an unusable state (out of memory, corrupt tablebase,
++// failed thread creation, ...). The embedding host must restart the engine.
++class FatalError: public std::runtime_error {
++   public:
++    using std::runtime_error::runtime_error;
++};
++
++[[noreturn]] inline void command_error(const std::string& message) { throw CommandError(message); }
++
++[[noreturn]] inline void fatal_error(const std::string& message) { throw FatalError(message); }
++
++// Called when a FatalError escapes a job running on a search thread, where it
++// can't propagate to the UCI thread. Installed by the embedding bridge.
++inline void (*asyncFatalHandler)(const char* message) = nullptr;
++
++}  // namespace Stockfish
++
++#endif  // #ifndef FATAL_ERROR_H_INCLUDED
+diff --git a/native/stockfish/src/memory.h b/native/stockfish/src/memory.h
+index 57b6da0..77b2d29 100644
+--- a/native/stockfish/src/memory.h
++++ b/native/stockfish/src/memory.h
+@@ -74,7 +74,7 @@ constexpr usize HugePageSize = usize(1) << 30;
+ 
+ [[noreturn]] inline void report_failed_allocation(usize bytes) {
+     std::cerr << "Failed to allocate " << bytes << " bytes." << std::endl;
+-    std::exit(EXIT_FAILURE);
++    fatal_error("Failed to allocate " + std::to_string(bytes) + " bytes.");  // stockfish_dart
+ }
+ 
+ void* std_aligned_alloc(usize alignment, usize size);
+diff --git a/native/stockfish/src/misc.cpp b/native/stockfish/src/misc.cpp
+index b05e8e8..d45f722 100644
+--- a/native/stockfish/src/misc.cpp
++++ b/native/stockfish/src/misc.cpp
+@@ -115,7 +115,7 @@ class Logger {
+             if (!l.file.is_open())
+             {
+                 std::cerr << "Unable to open debug log file " << fname << std::endl;
+-                exit(EXIT_FAILURE);
++                command_error("Unable to open debug log file " + fname.string());  // stockfish_dart
+             }
+ 
+             std::cin.rdbuf(&l.in);
+@@ -171,6 +171,11 @@ std::string engine_version_info() {
+ #endif
+     }
+ 
++#ifdef STOCKFISH_DART_BRIDGE
++    // stockfish_dart: notice that this is a modified version (GPL-3, section 5a).
++    ss << " (modified by stockfish_dart)";
++#endif
++
+     return ss.str();
+ }
+ 
+@@ -545,7 +550,9 @@ fs::path path_from_utf8(const std::string& path) {
+ CommandLine::CommandLine(int _argc, char** _argv) :
+     argc(_argc),
+     argv(_argv) {
+-#ifdef _WIN32
++// stockfish_dart: when embedded, the process command line belongs to the host
++// application and must not be interpreted as UCI commands.
++#if defined(_WIN32) && !defined(STOCKFISH_DART_BRIDGE)
+     // Convert any non-ANSI characters passed on the command line to UTF-8
+     int wargc = 0;
+     if (LPWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &wargc))
+diff --git a/native/stockfish/src/misc.h b/native/stockfish/src/misc.h
+index 9a557c8..b23f2ce 100644
+--- a/native/stockfish/src/misc.h
++++ b/native/stockfish/src/misc.h
+@@ -37,6 +37,8 @@
+ #include <type_traits>
+ #include <vector>
+ 
++#include "fatal_error.h"  // stockfish_dart: exceptions replacing std::exit()
++
+ #if !defined(NO_PREFETCH) && (defined(_MSC_VER) || defined(__INTEL_COMPILER))
+     #include <immintrin.h>
+ #endif
+diff --git a/native/stockfish/src/nnue/network.cpp b/native/stockfish/src/nnue/network.cpp
+index e6f166d..43d56d4 100644
+--- a/native/stockfish/src/nnue/network.cpp
++++ b/native/stockfish/src/nnue/network.cpp
+@@ -46,7 +46,12 @@
+ //     const unsigned char *const gEmbeddedNNUEEnd;     // a marker to the end
+ //     const unsigned int         gEmbeddedNNUESize;    // the size of the embedded file
+ // Note that this does not work in Microsoft Visual Studio.
+-#if !defined(UNIVERSAL_BINARY) && !defined(_MSC_VER) && !defined(NNUE_EMBEDDING_OFF)
++#if defined(STOCKFISH_DART_BRIDGE)
++// stockfish_dart: the default network is embedded once in the dispatcher
++// library and handed to this engine library at startup (native/bridge/).
++extern const unsigned char* gEmbeddedNNUEData;
++extern unsigned int         gEmbeddedNNUESize;
++#elif !defined(UNIVERSAL_BINARY) && !defined(_MSC_VER) && !defined(NNUE_EMBEDDING_OFF)
+ INCBIN(EmbeddedNNUE, EvalFileDefaultName);
+ #elif defined(UNIVERSAL_BINARY_MACOS_X86_SLICE)
+ // Determined at runtime, see universal/nnue_embed.cpp
+@@ -185,7 +190,9 @@ void Network::verify(const std::function<void(std::string_view)>& f,
+             f(msg);
+         }
+ 
+-        exit(EXIT_FAILURE);
++        // stockfish_dart: the engine keeps running; every search fails the
++        // same way until EvalFile points to a valid network again.
++        command_error("The network file " + evalfilePath.string() + " was not loaded successfully.");
+     }
+ 
+     if (f)
+@@ -250,7 +257,7 @@ void Network::load_internal(EvalFile& evalFile) {
+         }
+     };
+ 
+-#ifdef UNIVERSAL_BINARY_MACOS_X86_SLICE
++#if defined(UNIVERSAL_BINARY_MACOS_X86_SLICE) || defined(STOCKFISH_DART_BRIDGE)
+     if (gEmbeddedNNUEData == nullptr)  // failed embedded load
+         return;
+ #endif
+diff --git a/native/stockfish/src/numa.h b/native/stockfish/src/numa.h
+index 53aac36..84075e6 100644
+--- a/native/stockfish/src/numa.h
++++ b/native/stockfish/src/numa.h
+@@ -25,6 +25,7 @@
+ #include <cstdlib>
+ #include <functional>
+ #include <iostream>
++#include <iterator>  // stockfish_dart: std::inserter (not included transitively by newer libc++)
+ #include <limits>
+ #include <map>
+ #include <memory>
+diff --git a/native/stockfish/src/syzygy/tbprobe.cpp b/native/stockfish/src/syzygy/tbprobe.cpp
+index c1d4008..8e47fd9 100644
+--- a/native/stockfish/src/syzygy/tbprobe.cpp
++++ b/native/stockfish/src/syzygy/tbprobe.cpp
+@@ -281,7 +281,8 @@ class TBFile: public std::ifstream {
+         if (statbuf.st_size % 64 != 16)
+         {
+             std::cerr << "Corrupt tablebase file " << fname.string() << std::endl;
+-            exit(EXIT_FAILURE);
++            ::close(fd);  // stockfish_dart: don't leak the descriptor when throwing
++            fatal_error("Corrupt tablebase file " + fname.string());  // stockfish_dart
+         }
+ 
+         *mapping     = statbuf.st_size;
+@@ -292,7 +293,7 @@ class TBFile: public std::ifstream {
+         if (*baseAddress == MAP_FAILED)
+         {
+             std::cerr << "Could not mmap() " << fname.string() << std::endl;
+-            exit(EXIT_FAILURE);
++            fatal_error("Could not mmap() " + fname.string());  // stockfish_dart
+         }
+ 
+         #if defined(MADV_RANDOM)
+@@ -312,7 +313,8 @@ class TBFile: public std::ifstream {
+         if (size_low % 64 != 16)
+         {
+             std::cerr << "Corrupt tablebase file " << fname.string() << std::endl;
+-            exit(EXIT_FAILURE);
++            CloseHandle(fd);  // stockfish_dart: don't leak the handle when throwing
++            fatal_error("Corrupt tablebase file " + fname.string());  // stockfish_dart
+         }
+ 
+         HANDLE mmap = CreateFileMapping(fd, nullptr, PAGE_READONLY, size_high, size_low, nullptr);
+@@ -321,7 +323,7 @@ class TBFile: public std::ifstream {
+         if (!mmap)
+         {
+             std::cerr << "CreateFileMapping() failed" << std::endl;
+-            exit(EXIT_FAILURE);
++            fatal_error("CreateFileMapping() failed for " + fname.string());  // stockfish_dart
+         }
+ 
+         *mapping     = u64(mmap);
+@@ -332,7 +334,8 @@ class TBFile: public std::ifstream {
+         {
+             std::cerr << "MapViewOfFile() failed, name = " << fname.string()
+                       << ", error = " << GetLastError() << std::endl;
+-            exit(EXIT_FAILURE);
++            CloseHandle(mmap);  // stockfish_dart
++            fatal_error("MapViewOfFile() failed for " + fname.string());  // stockfish_dart
+         }
+     #endif
+         u8* data = (u8*) *baseAddress;
+@@ -342,7 +345,9 @@ class TBFile: public std::ifstream {
+         if (memcmp(data, Magics[type == WDL], 4))
+         {
+             std::cerr << "Corrupted table in file " << fname.string() << std::endl;
+-            exit(EXIT_FAILURE);
++            unmap(*baseAddress, *mapping);  // stockfish_dart: release the mapping when throwing
++            *baseAddress = nullptr;
++            fatal_error("Corrupted table in file " + fname.string());  // stockfish_dart
+         }
+ 
+         return data + 4;  // Skip Magics's header
+@@ -536,7 +541,7 @@ class TBTables {
+             }
+         }
+         std::cerr << "TB hash table size too low!" << std::endl;
+-        exit(EXIT_FAILURE);
++        fatal_error("TB hash table size too low");  // stockfish_dart
+     }
+ 
+    public:
+@@ -1418,7 +1423,7 @@ void* mapped(TBTable<Type>& e, const Position& pos) {
+     if (data && !set(e, data, (const u8*) e.baseAddress + size))
+     {
+         std::cerr << "Corrupted table in file " << fname << std::endl;
+-        exit(EXIT_FAILURE);
++        fatal_error("Corrupted table in file " + std::string(fname));  // stockfish_dart
+     }
+ 
+     e.ready.store(true, std::memory_order_release);
+diff --git a/native/stockfish/src/thread.cpp b/native/stockfish/src/thread.cpp
+index d767268..0fc3e2a 100644
+--- a/native/stockfish/src/thread.cpp
++++ b/native/stockfish/src/thread.cpp
+@@ -62,7 +62,7 @@ Thread::Thread(Search::SharedState&                    sharedState,
+     if (!stdThread.joinable())
+     {
+         std::cerr << "Failed to create search thread\n";
+-        std::exit(EXIT_FAILURE);
++        fatal_error("Failed to create search thread");  // stockfish_dart
+     }
+ 
+     wait_for_search_finished();
+@@ -142,8 +142,21 @@ void Thread::idle_loop() {
+ 
+         lk.unlock();
+ 
++        // stockfish_dart: errors on search threads can't reach the UCI thread,
++        // so they are handed to the embedding bridge, which resets the engine.
+         if (job)
+-            job();
++        {
++            try
++            {
++                job();
++            } catch (const std::exception& e)
++            {
++                if (asyncFatalHandler)
++                    asyncFatalHandler(e.what());
++                else
++                    std::abort();
++            }
++        }
+     }
+ }
+ 
+diff --git a/native/stockfish/src/tt.cpp b/native/stockfish/src/tt.cpp
+index 6df0696..3874306 100644
+--- a/native/stockfish/src/tt.cpp
++++ b/native/stockfish/src/tt.cpp
+@@ -193,7 +193,8 @@ void TranspositionTable::resize(usize mbSize, ThreadPool& threads) {
+     if (!table)
+     {
+         std::cerr << "Failed to allocate " << mbSize << "MB for transposition table." << std::endl;
+-        exit(EXIT_FAILURE);
++        // stockfish_dart
++        fatal_error("Failed to allocate " + std::to_string(mbSize) + "MB for transposition table.");
+     }
+ 
+     clear(threads);
+diff --git a/native/stockfish/src/uci.cpp b/native/stockfish/src/uci.cpp
+index 5dd2d03..3f6a6a1 100644
+--- a/native/stockfish/src/uci.cpp
++++ b/native/stockfish/src/uci.cpp
+@@ -34,6 +34,7 @@
+ 
+ #include "benchmark.h"
+ #include "engine.h"
++#include "fatal_error.h"
+ #include "memory.h"
+ #include "movegen.h"
+ #include "position.h"
+@@ -110,6 +111,11 @@ void UCIEngine::loop() {
+         token.clear();  // Avoid a stale if getline() returns nothing or a blank line
+         is >> token;
+ 
++        // stockfish_dart: a failing command is reported and the loop keeps
++        // running, instead of terminating the (host) process.
++        try
++        {
++
+         if (token == "quit" || token == "stop")
+             engine.stop();
+ 
+@@ -185,6 +191,15 @@ void UCIEngine::loop() {
+             sync_cout << "Unknown command: '" << cmd << "'. Type help for more information."
+                       << sync_endl;
+ 
++        } catch (const CommandError& e)
++        {
++            sync_cout << "info string CRITICAL ERROR: Command `" << currentCmd
++                      << "` failed. Reason: " << e.what() << sync_endl;
++
++            // The failed command may have left a half-applied position behind.
++            engine.set_position(StartFEN, {});
++        }
++
+     } while (token != "quit" && cli.argc <= 1);  // The command-line arguments are one-shot
+ }
+ 
+@@ -694,11 +709,8 @@ void UCIEngine::on_bestmove(std::string_view bestmove, std::string_view ponder)
+     std::cout << sync_endl;
+ }
+ 
+-void UCIEngine::terminate_on_critical_error(const std::string& message) {
+-    sync_cout << "info string CRITICAL ERROR: Command `" << currentCmd
+-              << "` failed. Reason: " << message << '\n'
+-              << sync_endl;
+-    std::exit(1);
+-}
++// stockfish_dart: throws instead of calling std::exit(1); the UCI loop
++// reports the error in the same format and keeps running.
++void UCIEngine::terminate_on_critical_error(const std::string& message) { command_error(message); }
+ 
+ }  // namespace Stockfish
+diff --git a/native/stockfish/src/ucioption.cpp b/native/stockfish/src/ucioption.cpp
+index cbbe007..a6ca6fd 100644
+--- a/native/stockfish/src/ucioption.cpp
++++ b/native/stockfish/src/ucioption.cpp
+@@ -69,12 +69,14 @@ const Option& OptionsMap::operator[](const std::string& name) const {
+ void OptionsMap::add(const std::string& name, const Option& option) {
+     if (!options_map.count(name))
+     {
+-        static usize insert_order = 0;
++        // stockfish_dart: count per map, not per process, so an engine that
++        // is created again in the same process still prints its options.
++        const usize insert_order = options_map.size();
+ 
+         options_map[name] = option;
+ 
+         options_map[name].parent = this;
+-        options_map[name].idx    = insert_order++;
++        options_map[name].idx    = insert_order;
+     }
+     else
+     {
