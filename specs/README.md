@@ -4,9 +4,9 @@ This directory holds the plan for `stockfish_dart`, a pure-Dart package (no
 Flutter) that embeds the [Stockfish](https://stockfishchess.org) chess engine
 through FFI. It runs on macOS, Windows and Linux.
 
-> Status: **plan approved in principle (2026-10-17); Q4 and Q8 still open.**
-> Nothing in `lib/` has been written yet. Target engine: **Stockfish 19**
-> (tag `sf_19`, released 2026-09-05).
+> Status: **implemented (2026-10-17)**, version 0.1.0, native release
+> `native-v0.1.0`. Target engine: **Stockfish 19** (tag `sf_19`, released
+> 2026-09-05). Q4 resolved: Stockfish 19 only. See "As built" for deviations.
 
 ## As built (2026-10-17)
 
