@@ -114,9 +114,16 @@ Future<List<File>> _resolveFiles(
   final localOut = Directory.fromUri(
     input.packageRoot.resolve('native/out/${target.name}/'),
   );
-  // Always a dependency, so creating or deleting a local build re-runs the
-  // hook instead of reusing a cached result.
-  output.dependencies.add(localOut.uri);
+  // Depend on the deepest existing directory of native/out/<target>/, so
+  // creating or deleting a local build re-runs the hook instead of reusing a
+  // cached result. (Missing directories can't be dependencies.)
+  output.dependencies.add(
+    [
+      localOut.uri,
+      input.packageRoot.resolve('native/out/'),
+      input.packageRoot.resolve('native/'),
+    ].firstWhere((uri) => Directory.fromUri(uri).existsSync()),
+  );
   final localFiles = _filesIn(localOut, target);
   if (localFiles.isNotEmpty) {
     log('using local build in ${localOut.path}');
