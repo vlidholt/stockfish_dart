@@ -70,7 +70,7 @@ dart pub add stockfish_dart
 
 That's it. The first `dart run`, `dart test` or `dart build cli` runs the
 package's build hook, which downloads the libraries for your platform (about
-75 MB, once) from this repository's GitHub releases and checks their SHA-256.
+80 MB, once) from this repository's GitHub releases and checks their SHA-256.
 `dart pub get` itself never runs code, so nothing is downloaded until you
 build.
 

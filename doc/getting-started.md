@@ -29,7 +29,7 @@ Future<void> main() async {
 ```
 
 Run it with `dart run`. The first run prints `Running build hooks...` while
-the native library is downloaded (about 75 MB, once per project). Later runs
+the native library is downloaded (about 80 MB, once per project). Later runs
 use the cached copy.
 
 To check an installation, run the bundled setup command. It loads the
