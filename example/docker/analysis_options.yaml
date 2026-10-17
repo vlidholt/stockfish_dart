@@ -1,0 +1,5 @@
+# Standalone example package; keeps the analyzer from using the root
+# package's lint configuration, which this package does not depend on.
+analyzer:
+  language:
+    strict-casts: true
