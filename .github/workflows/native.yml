@@ -80,7 +80,9 @@ jobs:
       - run: dart pub get
 
       - name: Build libraries
-        run: dart run tool/build_native.dart --target ${{ matrix.target }}
+        run: |
+          set -o pipefail
+          dart run tool/build_native.dart --target ${{ matrix.target }} 2>&1 | tee -a "$RUNNER_TEMP/output.log"
 
       - name: Check exported symbols and dependencies
         run: |
@@ -92,10 +94,23 @@ jobs:
           esac
 
       - name: Test
-        run: dart test --reporter expanded
+        run: |
+          set -o pipefail
+          dart test --reporter expanded 2>&1 | tee -a "$RUNNER_TEMP/output.log"
 
       - name: Smoke test every supported CPU variant
-        run: dart run tool/smoke_variants.dart
+        run: |
+          set -o pipefail
+          dart run tool/smoke_variants.dart 2>&1 | tee -a "$RUNNER_TEMP/output.log"
+
+      # Logs need a GitHub login; annotations are public, so surface the
+      # end of the output there.
+      - name: Report failure output
+        if: failure()
+        run: |
+          touch "$RUNNER_TEMP/output.log"
+          tail -c 3500 "$RUNNER_TEMP/output.log" \
+            | awk 'BEGIN { ORS = "%0A"; printf "::error title=Output (last lines)::" } { gsub(/%/, "%25"); gsub(/\r/, ""); print } END { printf "\n" }'
 
       - name: Upload libraries
         uses: actions/upload-artifact@v7

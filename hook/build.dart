@@ -146,11 +146,16 @@ Future<List<File>> _resolveFiles(
   );
   final entries = manifest.targets[target.name];
   if (entries == null || manifest.baseUrl == null) {
-    throw LibraryFetchException(
-      'This version of stockfish_dart has no prebuilt libraries for '
-      '${target.name}. Set the user-define stockfish_dart.build_from_source: '
-      'true (needs a C++17 compiler) or stockfish_dart.library_dir.',
+    // Not an error at build time: code that doesn't start the embedded
+    // engine (tools, FakeStockfish tests, EngineSource.process) still works.
+    // Starting the engine throws EngineLoadException.
+    log(
+      'WARNING: this version of stockfish_dart has no prebuilt libraries '
+      'for ${target.name}; the embedded engine will not be available. Set '
+      'the user-define stockfish_dart.build_from_source: true (needs a C++17 '
+      'compiler) or stockfish_dart.library_dir.',
     );
+    return const [];
   }
   if (input.userDefines['allow_download'] == false) {
     throw LibraryFetchException(
