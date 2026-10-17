@@ -111,6 +111,7 @@ final class Analysis {
   AnalysisSnapshot? _latest;
   Timer? _pending;
   DateTime? _lastEmit;
+  final _finished = Completer<void>();
 
   /// Snapshots, emitted whenever a line changes (at most once per throttle
   /// interval, if one was given).
@@ -120,10 +121,17 @@ final class Analysis {
   AnalysisSnapshot? get latest => _latest;
 
   /// Completes when the search ends.
-  Future<SearchResult> get result => search.result;
+  /// Completes after the last snapshot has been delivered.
+  Future<SearchResult> get result => search.result.then((r) async {
+    await _finished.future;
+    return r;
+  });
 
   /// Stops the analysis and returns the final result.
-  Future<SearchResult> stop() => search.stop();
+  Future<SearchResult> stop() {
+    search.stop().ignore();
+    return result;
+  }
 
   void _onInfo(SearchInfo info) {
     if (info.pv.isEmpty || info.score == null) return;
@@ -166,6 +174,6 @@ final class Analysis {
     _pending?.cancel();
     if (_pending != null) _emit();
     unawaited(_subscription.cancel());
-    unawaited(_snapshots.close());
+    _snapshots.close().whenComplete(_finished.complete).ignore();
   }
 }
